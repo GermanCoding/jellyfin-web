@@ -32,6 +32,7 @@ import Headroom from 'headroom.js';
         html += '</div>';
         html += '<div class="headerRight">';
         html += '<span class="headerSelectedPlayer"></span>';
+        html += '<button is="paper-icon-button-light" class="headerChatButton headerButton headerButtonRight hide"><span class="material-icons chat"></span></button>';
         html += '<button is="paper-icon-button-light" class="headerSyncButton syncButton headerButton headerButtonRight hide"><span class="material-icons sync_disabled"></span></button>';
         html += '<button is="paper-icon-button-light" class="headerAudioPlayerButton audioPlayerButton headerButton headerButtonRight hide"><span class="material-icons music_note"></span></button>';
         html += '<button is="paper-icon-button-light" class="headerCastButton castButton headerButton headerButtonRight hide"><span class="material-icons cast"></span></button>';
@@ -54,6 +55,7 @@ import Headroom from 'headroom.js';
         headerAudioPlayerButton = skinHeader.querySelector('.headerAudioPlayerButton');
         headerSearchButton = skinHeader.querySelector('.headerSearchButton');
         headerSyncButton = skinHeader.querySelector('.headerSyncButton');
+        headerChatButton = skinHeader.querySelector('.headerChatButton');
 
         retranslateUi();
         lazyLoadViewMenuBarImages();
@@ -95,6 +97,10 @@ import Headroom from 'headroom.js';
         if (headerSearchButton) {
             headerSearchButton.title = globalize.translate('Search');
         }
+
+        if (headerChatButton) {
+            headerSearchButton.title = globalize.translate('Chat');
+        }
     }
 
     function updateUserInHeader(user) {
@@ -131,6 +137,10 @@ import Headroom from 'headroom.js';
                 headerCastButton.classList.remove('hide');
             }
 
+            if (headerChatButton) {
+                headerChatButton.classList.remove('hide');
+            }
+
             const policy = user.Policy ? user.Policy : user.localUser.Policy;
 
             const apiClient = getCurrentApiClient();
@@ -144,6 +154,10 @@ import Headroom from 'headroom.js';
 
             if (headerSearchButton) {
                 headerSearchButton.classList.add('hide');
+            }
+
+            if (headerChatButton) {
+                headerChatButton.classList.add('hide');
             }
         }
 
@@ -176,7 +190,15 @@ import Headroom from 'headroom.js';
         return appRouter.showNowPlaying();
     }
 
-    function bindMenuEvents() {
+    function showChat() {
+        const btn = this;
+
+        import('../components/chat/chat').then((chat) => {
+            chat.show(btn);
+        });
+    }
+
+function bindMenuEvents() {
         if (mainDrawerButton) {
             mainDrawerButton.addEventListener('click', toggleMainDrawer);
         }
@@ -187,6 +209,10 @@ import Headroom from 'headroom.js';
 
         if (headerSearchButton) {
             headerSearchButton.addEventListener('click', showSearch);
+        }
+
+        if (headerChatButton) {
+            headerChatButton.addEventListener('click', showChat);
         }
 
         headerUserButton.addEventListener('click', onHeaderUserButtonClick);
@@ -889,6 +915,7 @@ import Headroom from 'headroom.js';
     let headerSearchButton;
     let headerAudioPlayerButton;
     let headerSyncButton;
+    let headerChatButton;
     const enableLibraryNavDrawer = layoutManager.desktop;
     const enableLibraryNavDrawerHome = !layoutManager.tv;
     const skinHeader = document.querySelector('.skinHeader');
