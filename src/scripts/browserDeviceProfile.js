@@ -8,6 +8,7 @@ import browser from './browser';
     }
 
     function canPlayHevc(videoTestElement, options) {
+        return false;
         if (browser.tizen || browser.xboxOne || browser.web0s || options.supportsHevc) {
             return true;
         }
@@ -49,7 +50,7 @@ import browser from './browser';
 
     function canPlayNativeHls() {
         if (browser.tizen) {
-            return true;
+            return false;
         }
 
         const media = document.createElement('video');
@@ -195,12 +196,12 @@ import browser from './browser';
     function getDirectPlayProfileForVideoContainer(container, videoAudioCodecs, videoTestElement, options) {
         let supported = false;
         let profileContainer = container;
-        const videoCodecs = [];
+        const videoCodecs = ['h264'];
 
         switch (container) {
             case 'asf':
                 supported = browser.tizen || browser.web0s || browser.edgeUwp;
-                videoAudioCodecs = [];
+                //videoAudioCodecs = [];
                 break;
             case 'avi':
                 supported = browser.tizen || browser.web0s || browser.edgeUwp;
@@ -243,10 +244,10 @@ import browser from './browser';
                 break;
             case 'wmv':
                 supported = browser.tizen || browser.web0s || browser.edgeUwp;
-                videoAudioCodecs = [];
+                //videoAudioCodecs = [];
                 break;
             case 'ts':
-                supported = testCanPlayTs();
+                supported = true; //testCanPlayTs();
                 videoCodecs.push('h264');
                 // safari doesn't support hevc in TS-HLS
                 if ((browser.tizen || browser.web0s) && canPlayHevc(videoTestElement, options)) {
@@ -814,28 +815,28 @@ import browser from './browser';
         // hevc main level 4.1
         if (videoTestElement.canPlayType('video/mp4; codecs="hvc1.1.4.L123"').replace(/no/, '') ||
             videoTestElement.canPlayType('video/mp4; codecs="hev1.1.4.L123"').replace(/no/, '')) {
-            maxHevcLevel = 123;
+            // maxHevcLevel = 123;
         }
 
         // hevc main10 level 4.1
         if (videoTestElement.canPlayType('video/mp4; codecs="hvc1.2.4.L123"').replace(/no/, '') ||
             videoTestElement.canPlayType('video/mp4; codecs="hev1.2.4.L123"').replace(/no/, '')) {
-            maxHevcLevel = 123;
-            hevcProfiles = 'main|main 10';
+            // maxHevcLevel = 123;
+            // hevcProfiles = 'main|main 10';
         }
 
         // hevc main10 level 5.1
         if (videoTestElement.canPlayType('video/mp4; codecs="hvc1.2.4.L153"').replace(/no/, '') ||
             videoTestElement.canPlayType('video/mp4; codecs="hev1.2.4.L153"').replace(/no/, '')) {
-            maxHevcLevel = 153;
-            hevcProfiles = 'main|main 10';
+            // maxHevcLevel = 153;
+            // hevcProfiles = 'main|main 10';
         }
 
         // hevc main10 level 6.1
         if (videoTestElement.canPlayType('video/mp4; codecs="hvc1.2.4.L183"').replace(/no/, '') ||
             videoTestElement.canPlayType('video/mp4; codecs="hev1.2.4.L183"').replace(/no/, '')) {
-            maxHevcLevel = 183;
-            hevcProfiles = 'main|main 10';
+            // maxHevcLevel = 183;
+            // hevcProfiles = 'main|main 10';
         }
 
         const h264CodecProfileConditions = [

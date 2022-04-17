@@ -1707,7 +1707,7 @@ class PlaybackManager {
 
             playerData.isChangingStream = true;
 
-            if (playerData.streamInfo && playSessionId) {
+            if (playerData.streamInfo && playSessionId && false) {
                 apiClient.stopActiveEncodings(playSessionId).then(function () {
                     // Stop the first transcoding afterwards because the player may still send requests to the original url
                     const afterSetSrc = function () {
