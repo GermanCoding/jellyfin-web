@@ -490,7 +490,7 @@ import { appRouter } from '../../../components/appRouter';
 
         function skipIntro(e) {
             playbackManager.seekMs(tvIntro.IntroEnd * 1000);
-            playbackManager.playPause(currentPlayer);
+            playbackManager.unpause(currentPlayer);
         }
 
         function onPlayPauseStateChanged() {
