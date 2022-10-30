@@ -9,10 +9,12 @@ import { playbackManager } from '../../components/playback/playbackmanager';
 import { appRouter } from '../../components/appRouter';
 import {
     bindEventsToHlsPlayer,
+    destroyShakaPlayer,
     destroyHlsPlayer,
     destroyFlvPlayer,
     destroyCastPlayer,
     getCrossOriginValue,
+    enableShakaPlayer,
     enableHlsJsPlayer,
     applySrc,
     resetSrc,
@@ -109,6 +111,16 @@ function tryRemoveElement(elem) {
         }
 
         return true;
+    }
+
+    function requireShakaPlayer() {
+        return Promise.all([
+            import('mux.js'),
+            import('shaka-player')
+        ]).then(([muxjs, shaka]) => {
+            window.muxjs = muxjs;
+            window.Shaka = shaka;
+        });
     }
 
     function requireHlsPlayer(callback) {
@@ -264,6 +276,11 @@ function tryRemoveElement(elem) {
         #flvPlayer;
         /**
          * @private (used in other files)
+         * @type {any | null | undefined}
+         */
+        _shakaPlayer;
+        /**
+         * @private (used in other files)
          * @type {any | undefined}
          */
         _hlsPlayer;
@@ -405,6 +422,68 @@ function tryRemoveElement(elem) {
         /**
          * @private
          */
+        onShakaError(error) {
+            console.error('shaka: error code', error.code, 'object', error);
+        }
+
+        /**
+         * @private
+         * @param e {Event} The event received from the `<video>` element
+         */
+        onShakaErrorEvent = (e) => {
+            // Extract the shaka.util.Error object from the event.
+            this.onShakaError(e.detail);
+        };
+
+        /* global Shaka */
+
+        /**
+         * @private
+         */
+        setSrcWithShakaPlayer(elem, options, url) {
+            return requireShakaPlayer().then(() => {
+                Shaka.polyfill.installAll();
+                if (Shaka.Player.isBrowserSupported()) {
+                    const shakaPlayer = new Shaka.Player(elem);
+
+                    shakaPlayer.configure({
+                        streaming: {
+                            retryParameters: {
+                                maxAttempts: 6
+                            },
+                            forceTransmuxTS: true,
+                            rebufferingGoal: 5,
+                            bufferingGoal: 30,
+                            bufferBehind: 30,
+                            inaccurateManifestTolerance: 5
+                        },
+                        abr: {
+                            enabled: false
+                        }
+                    });
+
+                    shakaPlayer.addEventListener('error', this.onShakaErrorEvent);
+
+                    this._shakaPlayer = shakaPlayer;
+                    return shakaPlayer.load(url).then(() => {
+                        console.debug('shaka: loaded manifest');
+                        // This is needed in setCurrentTrackElement
+                        this.#currentSrc = url;
+                        return Promise.resolve();
+                    }).catch((err) => {
+                        this.onShakaError(err);
+                        return Promise.reject();
+                    });
+                } else {
+                    console.error('shaka: unsupported browser!');
+                    return Promise.reject();
+                }
+            });
+        }
+
+        /**
+         * @private
+         */
         setSrcWithHlsJs(elem, options, url) {
             return new Promise((resolve, reject) => {
                 requireHlsPlayer(async () => {
@@ -455,6 +534,7 @@ function tryRemoveElement(elem) {
                 val += `#t=${seconds}`;
             }
 
+            await destroyShakaPlayer(this);
             destroyHlsPlayer(this);
             destroyFlvPlayer(this);
             destroyCastPlayer(this);
@@ -476,25 +556,30 @@ function tryRemoveElement(elem) {
                 elem.crossOrigin = crossOrigin;
             }
 
-            if (enableHlsJsPlayer(options.mediaSource.RunTimeTicks, 'Video') && val.includes('.m3u8')) {
-                return this.setSrcWithHlsJs(elem, options, val);
-            } else if (options.playMethod !== 'Transcode' && options.mediaSource.Container === 'flv') {
-                return this.setSrcWithFlvJs(elem, options, val);
-            } else {
-                elem.autoplay = true;
+            return import('../../scripts/settings/userSettings').then(async (userSettings) => {
+                const preferFmp4Hls = userSettings.preferFmp4HlsContainer();
+                if (preferFmp4Hls && enableShakaPlayer() && val.includes('.m3u8') && val.includes('&SegmentContainer=mp4')) {
+                    return this.setSrcWithShakaPlayer(elem, options, val);
+                } else if (enableHlsJsPlayer(options.mediaSource.RunTimeTicks, 'Video') && val.includes('.m3u8')) {
+                    return this.setSrcWithHlsJs(elem, options, val);
+                } else if (options.playMethod !== 'Transcode' && options.mediaSource.Container === 'flv') {
+                    return this.setSrcWithFlvJs(elem, options, val);
+                } else {
+                    elem.autoplay = true;
 
-                const includeCorsCredentials = await getIncludeCorsCredentials();
-                if (includeCorsCredentials) {
-                    // Safari will not send cookies without this
-                    elem.crossOrigin = 'use-credentials';
+                    const includeCorsCredentials = await getIncludeCorsCredentials();
+                    if (includeCorsCredentials) {
+                        // Safari will not send cookies without this
+                        elem.crossOrigin = 'use-credentials';
+                    }
+
+                    return applySrc(elem, val, options).then(() => {
+                        this.#currentSrc = val;
+
+                        return playWithPromise(elem, this.onError);
+                    });
                 }
-
-                return applySrc(elem, val, options).then(() => {
-                    this.#currentSrc = val;
-
-                    return playWithPromise(elem, this.onError);
-                });
-            }
+            });
         }
 
         setSubtitleStreamIndex(index) {
@@ -708,6 +793,7 @@ function tryRemoveElement(elem) {
         }
 
         destroy() {
+            destroyShakaPlayer(this);
             destroyHlsPlayer(this);
             destroyFlvPlayer(this);
 
@@ -1880,7 +1966,12 @@ function tryRemoveElement(elem) {
         if (this._hlsPlayer) {
             mediaCategory.stats.push({
                 label: globalize.translate('LabelStreamType'),
-                value: 'HLS'
+                value: 'HLS (hls.js)'
+            });
+        } else if (this._shakaPlayer) {
+            mediaCategory.stats.push({
+                label: globalize.translate('LabelStreamType'),
+                value: 'HLS (shaka)'
             });
         } else {
             mediaCategory.stats.push({
