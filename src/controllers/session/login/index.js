@@ -5,7 +5,6 @@ import { AppFeature } from 'constants/appFeature';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 
 import { appHost } from '../../../components/apphost';
-import appSettings from '../../../scripts/settings/appSettings';
 import dom from '../../../utils/dom';
 import loading from '../../../components/loading/loading';
 import layoutManager from '../../../components/layoutManager';
@@ -24,6 +23,17 @@ import './login.scss';
 
 const enableFocusTransform = !browser.slow && !browser.edge;
 
+/**
+ * Initializes the OAuth device ID in localStorage if it doesn't exist
+ * This is required for Jellyfin native apps to maintain device identification
+ */
+function oAuthInitDeviceId() {
+    // Only set device ID if it's not already set and we're in a native shell environment
+    if (!localStorage.getItem('_deviceId2') && window.NativeShell?.AppHost?.deviceId) {
+        localStorage.setItem('_deviceId2', window.NativeShell.AppHost.deviceId());
+    }
+}
+
 function authenticateUserByName(page, apiClient, url, username, password) {
     loading.show();
     apiClient.authenticateUserByName(username, password).then(function (result) {
@@ -32,7 +42,7 @@ function authenticateUserByName(page, apiClient, url, username, password) {
 
         onLoginSuccessful(user.Id, result.AccessToken, apiClient, url);
     }, function (response) {
-        page.querySelector('#txtManualPassword').value = '';
+        // page.querySelector('#txtManualPassword').value = '';
         loading.hide();
 
         const UnauthorizedOrForbidden = [401, 403];
@@ -118,16 +128,16 @@ function onLoginSuccessful(id, accessToken, apiClient, url) {
 }
 
 function showManualForm(context, showCancel, focusPassword) {
-    context.querySelector('.chkRememberLogin').checked = appSettings.enableAutoLogin();
+    // context.querySelector('.chkRememberLogin').checked = appSettings.enableAutoLogin();
     context.querySelector('.manualLoginForm').classList.remove('hide');
     context.querySelector('.visualLoginForm').classList.add('hide');
     context.querySelector('.btnManual').classList.add('hide');
 
-    if (focusPassword) {
-        context.querySelector('#txtManualPassword').focus();
-    } else {
-        context.querySelector('#txtManualName').focus();
-    }
+    // if (focusPassword) {
+    //     context.querySelector('#txtManualPassword').focus();
+    // } else {
+    //     context.querySelector('#txtManualName').focus();
+    // }
 
     if (showCancel) {
         context.querySelector('.btnCancel').classList.remove('hide');
@@ -229,26 +239,30 @@ export default function (view, params) {
             const haspw = cardContent.getAttribute('data-haspw');
 
             if (id === 'manual') {
-                context.querySelector('#txtManualName').value = '';
+                // context.querySelector('#txtManualName').value = '';
                 showManualForm(context, true);
             } else if (haspw == 'false') {
                 authenticateUserByName(context, getApiClient(), getTargetUrl(), name, '');
             } else {
-                context.querySelector('#txtManualName').value = name;
-                context.querySelector('#txtManualPassword').value = '';
+                // context.querySelector('#txtManualName').value = name;
+                // context.querySelector('#txtManualPassword').value = '';
                 showManualForm(context, true, true);
             }
         }
     });
     view.querySelector('.manualLoginForm').addEventListener('submit', function (e) {
-        appSettings.enableAutoLogin(view.querySelector('.chkRememberLogin').checked);
-        authenticateUserByName(view, getApiClient(), getTargetUrl(), view.querySelector('#txtManualName').value, view.querySelector('#txtManualPassword').value);
+        // appSettings.enableAutoLogin(view.querySelector('.chkRememberLogin').checked);
+        // authenticateUserByName(view, getApiClient(), getTargetUrl(), view.querySelector('#txtManualName').value, view.querySelector('#txtManualPassword').value);
+        oAuthInitDeviceId(); // Ensure device ID is set before SSO redirect
+        window.location.href = '/sso/OID/start/authentik';
         e.preventDefault();
         return false;
     });
     view.querySelector('.btnForgotPassword').addEventListener('click', function () {
         // Dashboard.navigate('forgotpassword');
-        window.open("https://accounts.germancoding.com/resetpassword");
+        window.location.href = 'https://accounts.germancoding.com/resetpassword';
+        e.preventDefault();
+        return false;
     });
     view.querySelector('.btnCancel').addEventListener('click', showVisualForm);
     view.querySelector('.btnQuick').addEventListener('click', function () {
@@ -256,7 +270,7 @@ export default function (view, params) {
         return false;
     });
     view.querySelector('.btnManual').addEventListener('click', function () {
-        view.querySelector('#txtManualName').value = '';
+        // view.querySelector('#txtManualName').value = '';
         showManualForm(view, true);
     });
     view.querySelector('.btnSelectServer').addEventListener('click', function () {
@@ -288,7 +302,7 @@ export default function (view, params) {
                 showVisualForm();
                 loadUserList(view, apiClient, users);
             } else {
-                view.querySelector('#txtManualName').value = '';
+                // view.querySelector('#txtManualName').value = '';
                 showManualForm(view, false, false);
             }
         }).catch().then(function () {
