@@ -29,7 +29,13 @@
       "color": "#0c2450"
     }
   ],
-  "menuLinks": [],
+  "menuLinks": [
+    {
+        "name": "Requests",
+        "icon": "movie_filter",
+        "url": "https://media.germancoding.com/ombi/"
+    }
+  ],
   "servers": [],
   "plugins": [
     "playAccessValidation/plugin",
